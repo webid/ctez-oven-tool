@@ -1,0 +1,21 @@
+A) Check your oven balance
+
+Go to https://better-call.dev/mainnet/KT1GWnsoFZVHGh7roXEER3qeCcgJgrXT3de2/storage and find your oven in the ovens bigmap by entering your address in the search field. Note oven id, ctez_outstanding, and tez_balance.
+
+B) Burn all ctez
+
+1. Go to https://better-call.dev/mainnet/KT1GWnsoFZVHGh7roXEER3qeCcgJgrXT3de2/interact/mint_or_burn
+2. Fill in:
+   - id — your oven ID
+   - quantity — negative value equal to your full ctez_outstanding (e.g. -100000000)
+3. Connect wallet and submit
+
+C) Withdraw all tez
+
+1. Stay on the same better-call.dev interact page
+2. Select entrypoint `withdraw`
+3. Fill in:
+   - id — your oven ID
+   - amount — your full tez_balance in mutez (try slightly smaller if fails)
+   - to — your wallet address
+4. Submit

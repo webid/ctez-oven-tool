@@ -1,0 +1,20 @@
+{
+  "name": "ctez-oven-tool",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@taquito/beacon-wallet": "^24.3.0",
+    "@taquito/taquito": "^24.3.0"
+  },
+  "devDependencies": {
+    "buffer": "^6.0.3",
+    "vite": "^6.3.5",
+    "vite-plugin-node-polyfills": "^0.28.0"
+  }
+}
