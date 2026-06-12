@@ -6,8 +6,7 @@
 import { TezosToolkit } from "@taquito/taquito";
 import { BeaconWallet, BeaconEvent } from "@taquito/beacon-wallet";
 import { NetworkType } from "@ecadlabs/beacon-types";
-
-const RPC_URL = "https://mainnet.tezos.marigold.dev";
+import { RPC_URL } from "./rpcConfig.js";
 
 let tezos = null;
 let wallet = null;
