@@ -5,7 +5,7 @@
 
 import { TezosToolkit } from "@taquito/taquito";
 import { BeaconWallet, BeaconEvent } from "@taquito/beacon-wallet";
-import { NetworkType } from "@ecadlabs/beacon-types";
+import { NetworkType, PermissionScope } from "@ecadlabs/beacon-types";
 import { RPC_URL } from "./rpcConfig.js";
 
 let tezos = null;
@@ -57,11 +57,12 @@ export async function checkExistingConnection() {
 export async function connectWallet() {
   if (!wallet) throw new Error("Wallet not initialized");
 
-  // Network is set in the BeaconWallet constructor — requestPermissions
-  // no longer accepts a "network" property (octez.connect SDK breaking change).
-  const permissions = await wallet.client.requestPermissions();
+  await wallet.requestPermissions({
+    network: { type: NetworkType.MAINNET },
+    scopes: [PermissionScope.OPERATION_REQUEST],
+  });
 
-  return permissions.address;
+  return wallet.getPKH();
 }
 
 /**

@@ -39,7 +39,7 @@ test("createWithdrawParams keeps mutez amount as a safe decimal string", () => {
   assert.deepEqual(params, {
     id: "42",
     amount: "900719925474099399999",
-    to: "tz1NRbpmTuPEFCCYCqCr7i3hkMRDRhBFgmxz",
+    to: "tz1NRbpmTuPEFCCYCqCr7i3hkMRDRhBFgmxz%default",
   });
 });
 
@@ -73,7 +73,7 @@ test("createCloseOvenBatchPlan orders burn before max-balance withdraw", () => {
       params: {
         id: "42",
         amount: "7654321",
-        to: "tz1NRbpmTuPEFCCYCqCr7i3hkMRDRhBFgmxz",
+        to: "tz1NRbpmTuPEFCCYCqCr7i3hkMRDRhBFgmxz%default",
       },
     },
   ]);
@@ -93,7 +93,7 @@ test("createCloseOvenBatchPlan skips burn when there is no ctez outstanding", ()
       params: {
         id: "42",
         amount: "7654321",
-        to: "tz1NRbpmTuPEFCCYCqCr7i3hkMRDRhBFgmxz",
+        to: "tz1NRbpmTuPEFCCYCqCr7i3hkMRDRhBFgmxz%default",
       },
     },
   ]);
