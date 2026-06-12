@@ -58,7 +58,6 @@ export async function connectWallet() {
   if (!wallet) throw new Error("Wallet not initialized");
 
   await wallet.requestPermissions({
-    network: { type: NetworkType.MAINNET },
     scopes: [PermissionScope.OPERATION_REQUEST],
   });
 
