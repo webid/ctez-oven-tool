@@ -158,23 +158,32 @@
             </section>
             
             <section class="guide-step">
-              <h3>B) Close one oven in a batch</h3>
+              <h3>B) Burn all ctez</h3>
               <ol>
-                <li>Create a batch operation on the contract interaction page on <a href="https://better-call.dev/mainnet/KT1GWnsoFZVHGh7roXEER3qeCcgJgrXT3de2/interact/mint_or_burn" target="_blank" rel="noopener">better-call.dev ↗</a>.</li>
-                <li>If the oven has ctez outstanding, add <code>mint_or_burn</code> first:
+                <li>Go to the <code>mint_or_burn</code> interaction page on <a href="https://better-call.dev/mainnet/KT1GWnsoFZVHGh7roXEER3qeCcgJgrXT3de2/interact/mint_or_burn" target="_blank" rel="noopener">better-call.dev ↗</a>.</li>
+                <li>Fill in:
                   <ul>
                     <li><code>id</code>: Your oven ID</li>
-                    <li><code>quantity</code>: The negative of your <strong>ctez_outstanding</strong> balance (e.g. <code>-100000000</code>)</li>
+                    <li><code>quantity</code>: Negative value equal to your full <strong>ctez_outstanding</strong> (e.g. <code>-100000000</code>)</li>
                   </ul>
                 </li>
-                <li>Add <code>withdraw</code> second when the oven has tez:
+                <li>Connect wallet and submit.</li>
+              </ol>
+            </section>
+
+            <section class="guide-step">
+              <h3>C) Withdraw all tez</h3>
+              <ol>
+                <li>Stay on the same better-call.dev interact page.</li>
+                <li>Select entrypoint <code>withdraw</code>.</li>
+                <li>Fill in:
                   <ul>
                     <li><code>id</code>: Your oven ID</li>
-                    <li><code>amount</code>: Your full <strong>tez_balance</strong> in mutez</li>
+                    <li><code>amount</code>: Your full <strong>tez_balance</strong> in mutez (try slightly smaller if it fails)</li>
                     <li><code>to</code>: Your wallet address</li>
                   </ul>
                 </li>
-                <li>Submit the batch. If either operation is wrong, the whole batch fails.</li>
+                <li>Submit.</li>
               </ol>
             </section>
           </div>
