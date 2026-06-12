@@ -8,13 +8,17 @@ import "./style.css";
 
 import { initWallet, checkExistingConnection, connectWallet, disconnectWallet } from "./wallet.js";
 import { fetchOvensByOwner, fetchAllOvenOwners } from "./tzkt.js";
-import { burnCtez, withdrawTez, formatTez, formatCtez } from "./contract.js";
+import { closeOven, formatTez, formatCtez } from "./contract.js";
+import { createLookupOptions } from "./lookupDisplay.js";
+import { isTestLookupWallet, lookupIsReadOnly } from "./testWalletMode.js";
+import { iconSvg } from "./uiIcons.js";
 
 // --- State ---
 let currentAddress = null;
+let connectedWalletAddress = null;
 let ovens = [];
 let selectedOven = null;
-let isReadOnly = false; // true when using lookup mode (no wallet connected)
+let isReadOnly = false; // true for lookup previews without the special test wallet
 
 // --- DOM refs ---
 const $ = (id) => document.getElementById(id);
@@ -30,16 +34,15 @@ const ovenLoading = $("oven-loading");
 const ovenEmpty = $("oven-empty");
 const ovenList = $("oven-list");
 const stepB = $("step-b");
-const stepC = $("step-c");
-const btnBurn = $("btn-burn");
-const btnWithdraw = $("btn-withdraw");
-const burnStatus = $("burn-status");
-const withdrawStatus = $("withdraw-status");
+const btnCloseOven = $("btn-close-oven");
+const closeStatus = $("close-status");
 const lookupInput = $("lookup-input");
 const btnLookup = $("btn-lookup");
 const lookupLoadingHint = $("lookup-loading-hint");
 const readonlyBanner = $("readonly-banner");
 const readonlyAddress = $("readonly-address");
+const lookupModeLabel = $("lookup-mode-label");
+const lookupHeroText = $("lookup-hero-text");
 const btnClearLookup = $("btn-clear-lookup");
 const lookupDropdown = $("lookup-dropdown");
 const btnGuide = $("btn-guide");
@@ -49,6 +52,7 @@ const btnCloseModal = $("btn-close-modal");
 // Dropdown state
 let allOwners = [];   // full list from TzKT
 let activeIndex = -1; // keyboard nav index
+let lastFocusedBeforeModal = null;
 
 // --- Init ---
 initWallet(handleAccountChange);
@@ -111,8 +115,8 @@ btnDisconnect.addEventListener("click", async () => {
 });
 
 btnCopyAddress.addEventListener("click", () => {
-  if (currentAddress) {
-    navigator.clipboard.writeText(currentAddress).then(() => {
+  if (connectedWalletAddress) {
+    navigator.clipboard.writeText(connectedWalletAddress).then(() => {
       const original = btnCopyAddress.innerHTML;
       btnCopyAddress.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>`;
       setTimeout(() => {
@@ -122,47 +126,23 @@ btnCopyAddress.addEventListener("click", () => {
   }
 });
 
-btnBurn.addEventListener("click", async () => {
-  if (!selectedOven || isReadOnly) return;
-  const ctez = parseInt(selectedOven.ctezOutstanding, 10);
-  if (ctez <= 0) {
-    showStatus(burnStatus, "info", "No ctez outstanding to burn.");
+btnCloseOven.addEventListener("click", async () => {
+  if (!selectedOven || !currentAddress || !connectedWalletAddress || isReadOnly) return;
+  if (!isPositiveAmount(selectedOven.ctezOutstanding) && !isPositiveAmount(selectedOven.tezBalance)) {
+    showStatus(closeStatus, "info", "No ctez or tez to close for this oven.");
     return;
   }
 
-  btnBurn.disabled = true;
+  btnCloseOven.disabled = true;
   try {
-    await burnCtez(selectedOven.ovenId, selectedOven.ctezOutstanding, (status) => {
-      showStatus(burnStatus, status.type, status.message, status.opHash);
+    await closeOven(selectedOven, currentAddress, (status) => {
+      showStatus(closeStatus, status.type, status.message, status.opHash);
     });
-    // Refresh oven data after successful burn
     await loadOvens(currentAddress);
   } catch (err) {
-    showStatus(burnStatus, "error", `Failed: ${err?.message || String(err)}`);
+    showStatus(closeStatus, "error", `Batch failed: ${err?.message || String(err)}`);
   } finally {
-    btnBurn.disabled = false;
-  }
-});
-
-btnWithdraw.addEventListener("click", async () => {
-  if (!selectedOven || !currentAddress || isReadOnly) return;
-  const tez = parseInt(selectedOven.tezBalance, 10);
-  if (tez <= 0) {
-    showStatus(withdrawStatus, "info", "No tez balance to withdraw.");
-    return;
-  }
-
-  btnWithdraw.disabled = true;
-  try {
-    await withdrawTez(selectedOven.ovenId, selectedOven.tezBalance, currentAddress, (status) => {
-      showStatus(withdrawStatus, status.type, status.message, status.opHash);
-    });
-    // Refresh oven data after successful withdraw
-    await loadOvens(currentAddress);
-  } catch (err) {
-    showStatus(withdrawStatus, "error", `Failed: ${err?.message || String(err)}`);
-  } finally {
-    btnWithdraw.disabled = false;
+    btnCloseOven.disabled = false;
   }
 });
 
@@ -237,13 +217,18 @@ btnClearLookup.addEventListener("click", () => {
 
 // --- Modal Guide Event Listeners ---
 btnGuide.addEventListener("click", () => {
+  lastFocusedBeforeModal = document.activeElement;
   modalGuide.classList.remove("hidden");
   document.body.style.overflow = "hidden"; // Prevent background scroll
+  btnCloseModal.focus();
 });
 
 const closeModal = () => {
   modalGuide.classList.add("hidden");
   document.body.style.overflow = "";
+  if (lastFocusedBeforeModal && typeof lastFocusedBeforeModal.focus === "function") {
+    lastFocusedBeforeModal.focus();
+  }
 };
 
 btnCloseModal.addEventListener("click", closeModal);
@@ -262,46 +247,85 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
-function formatLookupAmount(mutezAmount) {
-  if (!mutezAmount || mutezAmount === 0) return "0.00";
-  const val = mutezAmount / 1_000_000;
-  if (val < 0.01) {
-    return val.toFixed(6).replace(/\.?0+$/, "");
+modalGuide.addEventListener("keydown", (e) => {
+  if (e.key !== "Tab") return;
+
+  const focusable = modalGuide.querySelectorAll(
+    'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])',
+  );
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+
+  if (!first || !last) return;
+
+  if (e.shiftKey && document.activeElement === first) {
+    e.preventDefault();
+    last.focus();
+  } else if (!e.shiftKey && document.activeElement === last) {
+    e.preventDefault();
+    first.focus();
   }
-  return val.toFixed(2);
-}
+});
 
 function renderDropdown(items) {
   activeIndex = -1;
+  lookupDropdown.innerHTML = "";
+
   if (items.length === 0) {
-    lookupDropdown.innerHTML = '<div class="dropdown-empty">No matching addresses</div>';
+    const empty = document.createElement("div");
+    empty.className = "dropdown-empty";
+    empty.textContent = "No matching addresses";
+    lookupDropdown.append(empty);
     lookupDropdown.classList.remove("hidden");
+    lookupInput.setAttribute("aria-expanded", "true");
+    lookupInput.removeAttribute("aria-activedescendant");
     return;
   }
 
-  lookupDropdown.innerHTML = items
-    .map(({ address, totalCtez, totalTez }) => {
-      const ctezStr = totalCtez > 0 ? `${formatLookupAmount(totalCtez)} ctez` : "0 ctez";
-      const tezStr = `${formatLookupAmount(totalTez)} ꜩ to withdraw`;
-      const label = `${ctezStr} · ${tezStr}`;
-      return `<div class="dropdown-item" data-address="${address}">
-        <div class="dropdown-item-addr">${address}</div>
-        <div class="dropdown-item-label">${label}</div>
-      </div>`;
-    })
-    .join("");
+  const fragment = document.createDocumentFragment();
+  createLookupOptions(items).forEach(({ address, ctezLabel, tezLabel }, idx) => {
+    const item = document.createElement("button");
+    const itemAddress = document.createElement("span");
+    const itemLabel = document.createElement("span");
+
+    item.type = "button";
+    item.id = `lookup-option-${idx}`;
+    item.className = "dropdown-item";
+    item.dataset.address = address;
+    item.setAttribute("role", "option");
+    item.setAttribute("aria-selected", "false");
+
+    itemAddress.className = "dropdown-item-addr";
+    itemAddress.textContent = address;
+    itemLabel.className = "dropdown-item-label";
+    itemLabel.textContent = `${ctezLabel} · ${tezLabel}`;
+
+    item.append(itemAddress, itemLabel);
+    fragment.append(item);
+  });
+
+  lookupDropdown.append(fragment);
 
   lookupDropdown.classList.remove("hidden");
+  lookupInput.setAttribute("aria-expanded", "true");
+  lookupInput.removeAttribute("aria-activedescendant");
 }
 
 function hideDropdown() {
   lookupDropdown.classList.add("hidden");
+  lookupInput.setAttribute("aria-expanded", "false");
+  lookupInput.removeAttribute("aria-activedescendant");
   activeIndex = -1;
 }
 
 function updateActiveItem(items) {
-  items.forEach((el, i) => el.classList.toggle("active", i === activeIndex));
+  items.forEach((el, i) => {
+    const active = i === activeIndex;
+    el.classList.toggle("active", active);
+    el.setAttribute("aria-selected", active ? "true" : "false");
+  });
   if (items[activeIndex]) {
+    lookupInput.setAttribute("aria-activedescendant", items[activeIndex].id);
     items[activeIndex].scrollIntoView({ block: "nearest" });
   }
 }
@@ -310,15 +334,17 @@ function performLookup() {
   const addr = lookupInput.value.trim();
   if (!addr || !addr.startsWith("tz")) return;
 
-  isReadOnly = true;
+  isReadOnly = lookupIsReadOnly({ connectedWalletAddress, lookupAddress: addr });
   currentAddress = addr;
   selectedOven = null;
   ovens = [];
 
-  // Show read-only UI
-  sectionDisconnected.classList.add("hidden");
+  sectionDisconnected.classList.toggle("hidden", !isTestLookupWallet(connectedWalletAddress));
   sectionConnected.classList.remove("hidden");
   readonlyBanner.classList.remove("hidden");
+  lookupModeLabel.innerHTML = isReadOnly
+    ? `${iconSvg("view")} <span>Viewing ovens for</span>`
+    : `${iconSvg("view")} <span>Test mode: acting as</span>`;
   readonlyAddress.textContent = truncateAddress(addr);
   readonlyAddress.title = addr;
 
@@ -327,17 +353,20 @@ function performLookup() {
 
 function clearLookup() {
   isReadOnly = false;
-  currentAddress = null;
+  currentAddress = connectedWalletAddress;
   selectedOven = null;
   ovens = [];
 
   readonlyBanner.classList.add("hidden");
-  sectionConnected.classList.add("hidden");
-  sectionDisconnected.classList.remove("hidden");
+  sectionConnected.classList.toggle("hidden", !connectedWalletAddress);
+  sectionDisconnected.classList.toggle("hidden", !!connectedWalletAddress && !isTestLookupWallet(connectedWalletAddress));
   stepB.classList.add("hidden");
-  stepC.classList.add("hidden");
   ovenList.innerHTML = "";
   lookupInput.value = "";
+
+  if (connectedWalletAddress) {
+    loadOvens(connectedWalletAddress);
+  }
 }
 
 // --- Functions ---
@@ -348,6 +377,7 @@ function handleAccountChange(address) {
     clearLookup();
   }
 
+  connectedWalletAddress = address;
   currentAddress = address;
   selectedOven = null;
   ovens = [];
@@ -355,7 +385,8 @@ function handleAccountChange(address) {
 
   if (address) {
     // Connected
-    sectionDisconnected.classList.add("hidden");
+    sectionDisconnected.classList.toggle("hidden", !isTestLookupWallet(address));
+    sectionDisconnected.classList.toggle("lookup-panel", isTestLookupWallet(address));
     sectionConnected.classList.remove("hidden");
     readonlyBanner.classList.add("hidden");
     walletInfo.classList.remove("hidden");
@@ -363,12 +394,17 @@ function handleAccountChange(address) {
     btnDisconnect.classList.remove("hidden");
     walletAddress.textContent = truncateAddress(address);
     walletAddress.title = address;
+    lookupHeroText.textContent = isTestLookupWallet(address)
+      ? "Test mode: look up an oven owner and use the connected UI with that owner's ovens"
+      : "Connect your wallet to view and close your ctez ovens";
 
     // Load ovens
     loadOvens(address);
   } else {
     // Disconnected
+    connectedWalletAddress = null;
     sectionDisconnected.classList.remove("hidden");
+    sectionDisconnected.classList.remove("lookup-panel");
     sectionConnected.classList.add("hidden");
     readonlyBanner.classList.add("hidden");
     walletInfo.classList.add("hidden");
@@ -377,8 +413,8 @@ function handleAccountChange(address) {
     btnConnect.textContent = "Connect Wallet";
     btnDisconnect.classList.add("hidden");
     walletAddress.textContent = "";
+    lookupHeroText.textContent = "Connect your wallet to view and close your ctez ovens";
     stepB.classList.add("hidden");
-    stepC.classList.add("hidden");
     ovenList.innerHTML = "";
   }
 }
@@ -388,7 +424,6 @@ async function loadOvens(address) {
   ovenEmpty.classList.add("hidden");
   ovenList.innerHTML = "";
   stepB.classList.add("hidden");
-  stepC.classList.add("hidden");
   selectedOven = null;
 
   try {
@@ -415,11 +450,11 @@ async function loadOvens(address) {
 function renderOvenList(ovens) {
   ovenList.innerHTML = ovens
     .map((oven, idx) => {
-      const tezVal = parseInt(oven.tezBalance, 10);
-      const ctezVal = parseInt(oven.ctezOutstanding, 10);
+      const hasTez = isPositiveAmount(oven.tezBalance);
+      const hasCtez = isPositiveAmount(oven.ctezOutstanding);
 
       return `
-      <div class="oven-card" data-oven-idx="${idx}" id="oven-card-${idx}">
+      <button type="button" class="oven-card" data-oven-idx="${idx}" id="oven-card-${idx}" aria-pressed="false">
         <div class="oven-card-header">
           <span class="oven-id">Oven #${oven.ovenId}</span>
           <span class="oven-select-hint">${ovens.length > 1 ? "click to select" : "selected"}</span>
@@ -427,14 +462,14 @@ function renderOvenList(ovens) {
         <div class="oven-fields">
           <div class="oven-field">
             <span class="oven-field-label">ctez outstanding</span>
-            <span class="oven-field-value ${ctezVal === 0 ? "zero" : ""}">${formatCtez(oven.ctezOutstanding)} ctez</span>
+            <span class="oven-field-value ${hasCtez ? "" : "zero"}">${formatCtez(oven.ctezOutstanding)} ctez</span>
           </div>
           <div class="oven-field">
             <span class="oven-field-label">tez balance</span>
-            <span class="oven-field-value ${tezVal === 0 ? "zero" : ""}">${formatTez(oven.tezBalance)} ꜩ</span>
+            <span class="oven-field-value ${hasTez ? "" : "zero"}">${formatTez(oven.tezBalance)} ꜩ</span>
           </div>
         </div>
-      </div>
+      </button>
     `;
     })
     .join("");
@@ -457,85 +492,78 @@ function selectOven(oven) {
   selectedOven = oven;
 
   // Visual selection
-  ovenList.querySelectorAll(".oven-card").forEach((card) => card.classList.remove("selected"));
+  ovenList.querySelectorAll(".oven-card").forEach((card) => {
+    card.classList.remove("selected");
+    card.setAttribute("aria-pressed", "false");
+  });
   const idx = ovens.indexOf(oven);
   const card = ovenList.querySelector(`[data-oven-idx="${idx}"]`);
-  if (card) card.classList.add("selected");
-
-  const ctezVal = parseInt(oven.ctezOutstanding, 10);
-  const tezVal = parseInt(oven.tezBalance, 10);
-
-  // Step B — Burn
-  $("burn-oven-id").textContent = oven.ovenId;
-  $("burn-amount").textContent = `${formatCtez(oven.ctezOutstanding)} ctez`;
-  $("burn-raw").textContent = `-${oven.ctezOutstanding}`;
-  burnStatus.classList.add("hidden");
-
-  if (isReadOnly) {
-    // Read-only: show data but disable actions
-    stepB.classList.remove("hidden");
-    btnBurn.classList.add("hidden");
-    if (ctezVal <= 0) {
-      showStatus(burnStatus, "success", "No ctez outstanding — already burned or never minted.");
-    }
-  } else {
-    btnBurn.classList.remove("hidden");
-    if (ctezVal > 0) {
-      stepB.classList.remove("hidden");
-      btnBurn.disabled = false;
-    } else {
-      stepB.classList.remove("hidden");
-      btnBurn.disabled = true;
-      showStatus(burnStatus, "success", "No ctez outstanding — already burned or never minted.");
-    }
+  if (card) {
+    card.classList.add("selected");
+    card.setAttribute("aria-pressed", "true");
   }
 
-  // Step C — Withdraw
-  $("withdraw-oven-id").textContent = oven.ovenId;
-  $("withdraw-amount").textContent = `${formatTez(oven.tezBalance)} ꜩ`;
-  $("withdraw-raw").textContent = oven.tezBalance;
+  const hasCtez = isPositiveAmount(oven.ctezOutstanding);
+  const hasTez = isPositiveAmount(oven.tezBalance);
 
-  const displayAddr = isReadOnly ? currentAddress : currentAddress;
-  $("withdraw-to").textContent = truncateAddress(displayAddr);
-  $("withdraw-to").title = displayAddr;
-  withdrawStatus.classList.add("hidden");
+  $("close-oven-id").textContent = oven.ovenId;
+  $("close-burn-amount").textContent = hasCtez ? `${formatCtez(oven.ctezOutstanding)} ctez` : "Skipped";
+  $("close-burn-raw").textContent = hasCtez ? `-${oven.ctezOutstanding}` : "0";
+  $("close-withdraw-amount").textContent = hasTez ? `${formatTez(oven.tezBalance)} ꜩ` : "Skipped";
+  $("close-withdraw-raw").textContent = oven.tezBalance;
+
+  $("close-withdraw-to").textContent = truncateAddress(currentAddress);
+  $("close-withdraw-to").title = currentAddress;
+  closeStatus.classList.add("hidden");
+  stepB.classList.remove("hidden");
 
   if (isReadOnly) {
-    // Read-only: show data but disable actions
-    stepC.classList.remove("hidden");
-    btnWithdraw.classList.add("hidden");
-    if (tezVal <= 0) {
-      showStatus(withdrawStatus, "success", "No tez balance — already withdrawn or empty.");
-    }
+    btnCloseOven.classList.add("hidden");
+    showClosePreviewStatus(hasCtez, hasTez);
   } else {
-    btnWithdraw.classList.remove("hidden");
-    if (tezVal > 0) {
-      stepC.classList.remove("hidden");
-      btnWithdraw.disabled = false;
+    btnCloseOven.classList.remove("hidden");
+    btnCloseOven.disabled = !hasCtez && !hasTez;
+    if (hasCtez && hasTez) {
+      showStatus(closeStatus, "info", "This will burn ctez first, then withdraw the full oven tez balance in one atomic batch.");
+    } else if (hasCtez) {
+      showStatus(closeStatus, "info", "This will burn the full ctez outstanding amount in one batch.");
+    } else if (hasTez) {
+      showStatus(closeStatus, "info", "No ctez burn is needed. This will withdraw the full oven tez balance.");
     } else {
-      stepC.classList.remove("hidden");
-      btnWithdraw.disabled = true;
-      showStatus(withdrawStatus, "success", "No tez balance — already withdrawn or empty.");
+      showStatus(closeStatus, "success", "No ctez or tez to close for this oven.");
     }
+  }
+}
+
+function showClosePreviewStatus(hasCtez, hasTez) {
+  if (hasCtez && hasTez) {
+    showStatus(closeStatus, "info", "Read-only preview: burn ctez first, then withdraw the full oven tez balance in one atomic batch.");
+  } else if (hasCtez) {
+    showStatus(closeStatus, "info", "Read-only preview: burn the full ctez outstanding amount.");
+  } else if (hasTez) {
+    showStatus(closeStatus, "info", "Read-only preview: no burn needed; withdraw the full oven tez balance.");
+  } else {
+    showStatus(closeStatus, "success", "No ctez or tez to close for this oven.");
   }
 }
 
 function showStatus(el, type, message, opHash) {
   el.classList.remove("hidden", "status-pending", "status-success", "status-error", "status-info", "status-warning");
   el.classList.add(`status-${type}`);
+  el.setAttribute("role", type === "error" ? "alert" : "status");
 
   let html = "";
   if (type === "pending") {
     html = `<span class="spinner"></span> ${escapeHtml(message)}`;
   } else if (type === "success") {
-    html = `✅ ${escapeHtml(message)}`;
+    html = `${iconSvg("success")} <span>${escapeHtml(message)}</span>`;
     if (opHash) {
       html += ` <a href="https://tzkt.io/${opHash}" target="_blank" rel="noopener">${opHash.slice(0, 12)}…</a>`;
     }
   } else if (type === "error") {
-    html = `❌ ${escapeHtml(message)}`;
+    html = `${iconSvg("error")} <span>${escapeHtml(message)}</span>`;
   } else if (type === "warning") {
-    html = `⚠️ ${escapeHtml(message)}`;
+    html = `${iconSvg("warning")} <span>${escapeHtml(message)}</span>`;
   } else {
     html = escapeHtml(message);
   }
@@ -546,6 +574,10 @@ function showStatus(el, type, message, opHash) {
 function truncateAddress(addr) {
   if (!addr || addr.length < 12) return addr || "";
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
+}
+
+function isPositiveAmount(amount) {
+  return /^\d+$/.test(String(amount)) && BigInt(amount) > 0n;
 }
 
 function escapeHtml(str) {

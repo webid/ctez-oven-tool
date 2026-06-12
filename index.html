@@ -49,12 +49,13 @@
           <div class="hero-icon">
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
           </div>
-          <p class="hero-text">Connect your wallet to view and close your ctez ovens</p>
+          <p id="lookup-hero-text" class="hero-text">Connect your wallet to view and close your ctez ovens</p>
           <div class="lookup-divider"><span>or look up any address</span></div>
           <div class="lookup-row">
             <div class="lookup-input-wrap">
-              <input id="lookup-input" type="text" placeholder="tz1…" autocomplete="off" spellcheck="false" class="lookup-input" />
-              <div id="lookup-dropdown" class="lookup-dropdown hidden"></div>
+              <label for="lookup-input" class="sr-only">Tezos address to look up</label>
+              <input id="lookup-input" type="text" placeholder="tz1…" autocomplete="off" spellcheck="false" class="lookup-input" role="combobox" aria-expanded="false" aria-controls="lookup-dropdown" aria-autocomplete="list" />
+              <div id="lookup-dropdown" class="lookup-dropdown hidden" role="listbox"></div>
             </div>
             <button id="btn-lookup" class="btn btn-ghost">Look up</button>
           </div>
@@ -66,7 +67,7 @@
         <!-- Read-only mode banner -->
         <div id="readonly-banner" class="readonly-banner hidden">
           <div class="readonly-banner-inner">
-            <span>👁 Viewing ovens for <strong id="readonly-address"></strong></span>
+            <span><span id="lookup-mode-label"><svg class="ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg> <span>Viewing ovens for</span></span> <strong id="readonly-address"></strong></span>
             <button id="btn-clear-lookup" class="btn-icon" title="Clear lookup" aria-label="Clear lookup">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
@@ -91,57 +92,43 @@
             <div id="oven-list"></div>
           </section>
 
-          <!-- Step B: Burn ctez -->
-          <section id="step-b" class="step-section hidden">
-            <div class="step-header">
-              <span class="step-badge">B</span>
-              <h2>Burn ctez</h2>
-            </div>
-            <div class="step-body">
-              <div class="field-row">
-                <label>Oven ID</label>
-                <span id="burn-oven-id" class="field-value mono"></span>
+          <div class="actions-panel">
+            <!-- Step B: Close oven -->
+            <section id="step-b" class="step-section hidden">
+              <div class="step-header">
+                <span class="step-badge">B</span>
+                <h2>Close oven</h2>
               </div>
-              <div class="field-row">
-                <label>ctez to burn</label>
-                <span id="burn-amount" class="field-value mono"></span>
+              <div class="step-body">
+                <div class="field-row">
+                  <span class="field-label">Oven ID</span>
+                  <span id="close-oven-id" class="field-value mono"></span>
+                </div>
+                <div class="field-row">
+                  <span class="field-label">ctez to burn</span>
+                  <span id="close-burn-amount" class="field-value mono"></span>
+                </div>
+                <div class="field-row field-row-detail">
+                  <span class="field-label">Raw quantity (mutez)</span>
+                  <span id="close-burn-raw" class="field-value mono dim"></span>
+                </div>
+                <div class="field-row">
+                  <span class="field-label">tez to withdraw</span>
+                  <span id="close-withdraw-amount" class="field-value mono"></span>
+                </div>
+                <div class="field-row field-row-detail">
+                  <span class="field-label">Raw amount (mutez)</span>
+                  <span id="close-withdraw-raw" class="field-value mono dim"></span>
+                </div>
+                <div class="field-row">
+                  <span class="field-label">Destination</span>
+                  <span id="close-withdraw-to" class="field-value mono"></span>
+                </div>
+                <button id="btn-close-oven" class="btn btn-primary full-width">Close Oven in One Batch</button>
+                <div id="close-status" class="status-strip hidden" role="status" aria-live="polite" aria-atomic="true"></div>
               </div>
-              <div class="field-row field-row-detail">
-                <label>Raw quantity (mutez)</label>
-                <span id="burn-raw" class="field-value mono dim"></span>
-              </div>
-              <button id="btn-burn" class="btn btn-danger full-width">Burn All ctez</button>
-              <div id="burn-status" class="status-strip hidden"></div>
-            </div>
-          </section>
-
-          <!-- Step C: Withdraw tez -->
-          <section id="step-c" class="step-section hidden">
-            <div class="step-header">
-              <span class="step-badge">C</span>
-              <h2>Withdraw tez</h2>
-            </div>
-            <div class="step-body">
-              <div class="field-row">
-                <label>Oven ID</label>
-                <span id="withdraw-oven-id" class="field-value mono"></span>
-              </div>
-              <div class="field-row">
-                <label>tez to withdraw</label>
-                <span id="withdraw-amount" class="field-value mono"></span>
-              </div>
-              <div class="field-row field-row-detail">
-                <label>Raw amount (mutez)</label>
-                <span id="withdraw-raw" class="field-value mono dim"></span>
-              </div>
-              <div class="field-row">
-                <label>Destination</label>
-                <span id="withdraw-to" class="field-value mono"></span>
-              </div>
-              <button id="btn-withdraw" class="btn btn-primary full-width">Withdraw All tez</button>
-              <div id="withdraw-status" class="status-strip hidden"></div>
-            </div>
-          </section>
+            </section>
+          </div>
         </div>
       </main>
 
@@ -155,11 +142,11 @@
       </footer>
 
       <!-- Modal Guide -->
-      <div id="modal-guide" class="modal hidden">
+      <div id="modal-guide" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modal-guide-title" tabindex="-1">
         <div class="modal-overlay"></div>
         <div class="modal-container">
           <div class="modal-header">
-            <h2>Manual Guide</h2>
+            <h2 id="modal-guide-title">Manual Guide</h2>
             <button id="btn-close-modal" class="btn-icon" aria-label="Close modal">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
@@ -171,32 +158,23 @@
             </section>
             
             <section class="guide-step">
-              <h3>B) Burn all ctez</h3>
+              <h3>B) Close one oven in a batch</h3>
               <ol>
-                <li>Go to the contract interaction page on <a href="https://better-call.dev/mainnet/KT1GWnsoFZVHGh7roXEER3qeCcgJgrXT3de2/interact/mint_or_burn" target="_blank" rel="noopener">better-call.dev ↗</a>.</li>
-                <li>Enter the following values under the <code>mint_or_burn</code> section:
+                <li>Create a batch operation on the contract interaction page on <a href="https://better-call.dev/mainnet/KT1GWnsoFZVHGh7roXEER3qeCcgJgrXT3de2/interact/mint_or_burn" target="_blank" rel="noopener">better-call.dev ↗</a>.</li>
+                <li>If the oven has ctez outstanding, add <code>mint_or_burn</code> first:
                   <ul>
                     <li><code>id</code>: Your oven ID</li>
                     <li><code>quantity</code>: The negative of your <strong>ctez_outstanding</strong> balance (e.g. <code>-100000000</code>)</li>
                   </ul>
                 </li>
-                <li>Connect your wallet on that page and submit the transaction.</li>
-              </ol>
-            </section>
-
-            <section class="guide-step">
-              <h3>C) Withdraw all tez</h3>
-              <ol>
-                <li>Stay on the same better-call.dev page.</li>
-                <li>Select the <code>withdraw</code> entrypoint from the interact list.</li>
-                <li>Enter the following values:
+                <li>Add <code>withdraw</code> second when the oven has tez:
                   <ul>
                     <li><code>id</code>: Your oven ID</li>
-                    <li><code>amount</code>: Your full <strong>tez_balance</strong> in mutez. (If the transaction fails, try a slightly smaller amount to account for fee changes)</li>
+                    <li><code>amount</code>: Your full <strong>tez_balance</strong> in mutez</li>
                     <li><code>to</code>: Your wallet address</li>
                   </ul>
                 </li>
-                <li>Submit the transaction.</li>
+                <li>Submit the batch. If either operation is wrong, the whole batch fails.</li>
               </ol>
             </section>
           </div>

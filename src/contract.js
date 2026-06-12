@@ -1,146 +1,73 @@
 /**
- * Contract operations module — mint_or_burn (burn ctez) and withdraw (withdraw tez).
- * Uses Taquito v24: wallet.at() + .methodsObject with named parameters.
+ * Contract operations module — closes one oven through an atomic wallet batch.
+ * Uses Taquito v24: wallet.batch() + withContractCall().
  */
 
 import { getTezos } from "./wallet.js";
+import {
+  createBurnParams,
+  createCloseOvenBatchPlan,
+  createWithdrawParams,
+  formatCtez,
+  formatTez,
+} from "./contractParams.js";
 
 const CTEZ_CONTRACT = "KT1GWnsoFZVHGh7roXEER3qeCcgJgrXT3de2";
 
 /**
- * Burn all ctez for a given oven.
- * Calls mint_or_burn with a negative quantity.
+ * Close one oven with an atomic wallet batch.
+ * Burns all outstanding ctez first when needed, then withdraws the full oven tez balance.
  *
- * @param {string} ovenId - The oven's numeric ID
- * @param {string} ctezOutstanding - The ctez_outstanding value (positive, in mutez)
+ * @param {{ovenId: string, ctezOutstanding: string, tezBalance: string}} oven
+ * @param {string} userAddress - Destination address (user's wallet)
  * @param {(status: {type: string, message: string, opHash?: string}) => void} onStatus
  */
-export async function burnCtez(ovenId, ctezOutstanding, onStatus) {
+export async function closeOven(oven, userAddress, onStatus) {
   const tezos = getTezos();
 
   onStatus({ type: "pending", message: "Getting contract handle…" });
 
   const contract = await tezos.wallet.at(CTEZ_CONTRACT);
+  const plan = createCloseOvenBatchPlan({
+    ovenId: oven.ovenId,
+    ctezOutstanding: oven.ctezOutstanding,
+    tezBalance: oven.tezBalance,
+    destination: userAddress,
+  });
 
-  const quantity = -Math.abs(parseInt(ctezOutstanding, 10));
+  const burnStep = plan.find((step) => step.entrypoint === "mint_or_burn");
+  const withdrawStep = plan.find((step) => step.entrypoint === "withdraw");
+  const summary = [
+    burnStep ? `burn ${formatCtez(oven.ctezOutstanding)} ctez` : null,
+    withdrawStep ? `withdraw ${formatTez(oven.tezBalance)} ꜩ` : null,
+  ].filter(Boolean).join(", then ");
 
-  onStatus({ type: "pending", message: `Sending mint_or_burn(id: ${ovenId}, quantity: ${quantity})… Approve in your wallet.` });
+  onStatus({
+    type: "pending",
+    message: `Sending atomic oven batch: ${summary}. Approve in your wallet.`,
+  });
 
-  const op = await contract.methodsObject.mint_or_burn({
-    id: parseInt(ovenId, 10),
-    quantity: quantity,
-  }).send();
+  let batch = tezos.wallet.batch();
+  for (const step of plan) {
+    batch = batch.withContractCall(contract.methodsObject[step.entrypoint](step.params));
+  }
 
-  onStatus({ type: "pending", message: `Transaction sent. Waiting for confirmation… (${op.opHash})` });
+  const op = await batch.send();
 
+  onStatus({ type: "pending", message: `Batch sent. Waiting for confirmation… (${op.opHash})` });
   await op.confirmation(1);
 
   onStatus({
     type: "success",
-    message: `Burn confirmed!`,
+    message: "Oven batch confirmed. All requested burn/withdraw operations succeeded.",
     opHash: op.opHash,
   });
 }
 
-/**
- * Withdraw all tez from a given oven.
- * If full amount fails, retries with a reduced amount.
- *
- * @param {string} ovenId - The oven's numeric ID
- * @param {string} tezBalance - The tez_balance value in mutez
- * @param {string} userAddress - Destination address (user's wallet)
- * @param {(status: {type: string, message: string, opHash?: string}) => void} onStatus
- */
-export async function withdrawTez(ovenId, tezBalance, userAddress, onStatus) {
-  const tezos = getTezos();
-
-  onStatus({ type: "pending", message: "Getting contract handle…" });
-
-  const contract = await tezos.wallet.at(CTEZ_CONTRACT);
-
-  const fullAmount = parseInt(tezBalance, 10);
-
-  // First try: full amount
-  try {
-    onStatus({
-      type: "pending",
-      message: `Sending withdraw(id: ${ovenId}, amount: ${fullAmount} mutez = ${formatTez(fullAmount)} ꜩ)… Approve in your wallet.`,
-    });
-
-    const op = await contract.methodsObject.withdraw({
-      id: parseInt(ovenId, 10),
-      amount: fullAmount,
-      to: userAddress,
-    }).send();
-
-    onStatus({ type: "pending", message: `Transaction sent. Waiting for confirmation… (${op.opHash})` });
-    await op.confirmation(1);
-
-    onStatus({
-      type: "success",
-      message: `Withdrawal confirmed! ${formatTez(fullAmount)} ꜩ sent to your wallet.`,
-      opHash: op.opHash,
-    });
-    return;
-  } catch (err) {
-    const errMsg = err?.message || String(err);
-
-    // If it looks like a balance/amount error, retry with reduced amount
-    const reducedAmount = fullAmount - 10000; // subtract 0.01 tez
-    if (reducedAmount <= 0) {
-      onStatus({
-        type: "error",
-        message: `Withdrawal failed: ${errMsg}`,
-      });
-      return;
-    }
-
-    onStatus({
-      type: "warning",
-      message: `Full withdrawal of ${formatTez(fullAmount)} ꜩ failed: "${errMsg}". Retrying with ${formatTez(reducedAmount)} ꜩ (reduced by 0.01 ꜩ to cover fees)…`,
-    });
-
-    // Second try: reduced amount
-    try {
-      const op = await contract.methodsObject.withdraw({
-        id: parseInt(ovenId, 10),
-        amount: reducedAmount,
-        to: userAddress,
-      }).send();
-
-      onStatus({ type: "pending", message: `Retry transaction sent. Waiting for confirmation… (${op.opHash})` });
-      await op.confirmation(1);
-
-      onStatus({
-        type: "success",
-        message: `Withdrawal confirmed! ${formatTez(reducedAmount)} ꜩ sent to your wallet (reduced from ${formatTez(fullAmount)} ꜩ).`,
-        opHash: op.opHash,
-      });
-    } catch (retryErr) {
-      onStatus({
-        type: "error",
-        message: `Retry also failed: ${retryErr?.message || String(retryErr)}. You may need to manually enter a smaller amount.`,
-      });
-    }
-  }
-}
-
-/**
- * Format mutez to tez with 6 decimal places.
- * @param {number|string} mutez
- * @returns {string}
- */
-export function formatTez(mutez) {
-  const n = typeof mutez === "string" ? parseInt(mutez, 10) : mutez;
-  return (n / 1_000_000).toFixed(6);
-}
-
-/**
- * Format ctez outstanding (same 6-decimal format).
- * @param {number|string} amount
- * @returns {string}
- */
-export function formatCtez(amount) {
-  const n = typeof amount === "string" ? parseInt(amount, 10) : amount;
-  return (n / 1_000_000).toFixed(6);
-}
+export {
+  createBurnParams,
+  createCloseOvenBatchPlan,
+  createWithdrawParams,
+  formatCtez,
+  formatTez,
+};
