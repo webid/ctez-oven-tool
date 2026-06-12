@@ -537,11 +537,11 @@ function selectOven(oven) {
 
 function showClosePreviewStatus(hasCtez, hasTez) {
   if (hasCtez && hasTez) {
-    showStatus(closeStatus, "info", "Read-only preview: burn ctez first, then withdraw the full oven tez balance in one atomic batch.");
+    showStatus(closeStatus, "info", "Read-only preview: the oven owner wallet can burn ctez first, then withdraw the full oven tez balance in one atomic batch.");
   } else if (hasCtez) {
-    showStatus(closeStatus, "info", "Read-only preview: burn the full ctez outstanding amount.");
+    showStatus(closeStatus, "info", "Read-only preview: the oven owner wallet can burn the full ctez outstanding amount.");
   } else if (hasTez) {
-    showStatus(closeStatus, "info", "Read-only preview: no burn needed; withdraw the full oven tez balance.");
+    showStatus(closeStatus, "info", "Read-only preview: no burn needed; the oven owner wallet can withdraw the full oven tez balance.");
   } else {
     showStatus(closeStatus, "success", "No ctez or tez to close for this oven.");
   }

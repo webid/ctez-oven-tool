@@ -8,13 +8,13 @@ test("only the configured wallet enables connected lookup test mode", () => {
   assert.equal(isTestLookupWallet("tz1NRbpmTuPEFCCYCqCr7i3hkMRDRhBFgmxz"), false);
 });
 
-test("lookup is actionable only when the special wallet is connected for another owner", () => {
+test("lookup is read-only when the connected wallet is not the looked-up owner", () => {
   assert.equal(
     lookupIsReadOnly({
       connectedWalletAddress: TEST_LOOKUP_WALLET,
       lookupAddress: "tz1NRbpmTuPEFCCYCqCr7i3hkMRDRhBFgmxz",
     }),
-    false,
+    true,
   );
   assert.equal(
     lookupIsReadOnly({
@@ -25,7 +25,7 @@ test("lookup is actionable only when the special wallet is connected for another
   );
 });
 
-test("lookup remains actionable for the special wallet even when selecting itself", () => {
+test("lookup is actionable when the connected wallet is the looked-up owner", () => {
   assert.equal(
     lookupIsReadOnly({
       connectedWalletAddress: TEST_LOOKUP_WALLET,

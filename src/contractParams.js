@@ -24,13 +24,11 @@ export function createBurnParams(ovenId, ctezOutstanding) {
 export function createWithdrawParams(ovenId, tezBalance, userAddress) {
   const id = assertDecimalString(ovenId, "oven id");
   const amount = assertDecimalString(tezBalance, "tez balance");
-  const destination = String(userAddress ?? "").trim();
+  const to = String(userAddress ?? "").trim();
 
-  if (!TZ_ADDRESS_RE.test(destination)) {
+  if (!TZ_ADDRESS_RE.test(to)) {
     throw new Error("destination must be an implicit tz address");
   }
-
-  const to = `${destination}%default`;
 
   return { id, amount, to };
 }
