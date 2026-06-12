@@ -4,6 +4,6 @@ export function isTestLookupWallet(address) {
   return address === TEST_LOOKUP_WALLET;
 }
 
-export function lookupIsReadOnly({ connectedWalletAddress }) {
-  return !isTestLookupWallet(connectedWalletAddress);
+export function lookupIsReadOnly({ connectedWalletAddress, lookupAddress }) {
+  return connectedWalletAddress !== lookupAddress;
 }
