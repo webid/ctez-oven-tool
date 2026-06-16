@@ -1,231 +1,295 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ctez Oven Tool — Close Your Oven</title>
-    <meta name="description" content="A minimal tool for Tezos users to close their ctez ovens: check balance, burn ctez, and withdraw tez." />
-    <link rel="icon" href="https://purplematter.com/favicon.png" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./src/style.css" />
-  </head>
-  <body>
-    <!-- Fullscreen App Loader -->
-    <div id="app-loading" class="app-loading">
-      <div class="app-loading-content">
-        <span class="spinner large"></span>
-        <span class="app-loading-text">Initializing ctez Oven Tool…</span>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ctez Oven Tool — Close Your Oven</title>
+  <meta name="description"
+    content="A minimal tool for Tezos users to close their ctez ovens: check balance, burn ctez, and withdraw tez." />
+  <link rel="icon" href="https://purplematter.com/favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="./src/style.css" />
+</head>
+
+<body>
+  <!-- Fullscreen App Loader -->
+  <div id="app-loading" class="app-loading">
+    <div class="app-loading-content">
+      <span class="spinner large"></span>
+      <span class="app-loading-text">Initializing ctez Oven Tool…</span>
+    </div>
+  </div>
+
+  <div id="app">
+    <!-- Header -->
+    <header id="header">
+      <div class="header-left">
+        <h1>ctez Oven Tool</h1>
+        <span class="header-subtitle">close your oven</span>
+      </div>
+      <div class="header-right">
+        <button id="btn-guide" class="btn-icon" title="Manual guide" aria-label="Manual guide"
+          style="margin-right: 6px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+            <line x1="12" y1="17" x2="12.01" y2="17" />
+          </svg>
+        </button>
+        <div id="wallet-info" class="wallet-info hidden">
+          <span id="wallet-address" class="wallet-address"></span>
+          <button id="btn-copy-address" class="btn-icon" title="Copy address" aria-label="Copy address">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" />
+              <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+            </svg>
+          </button>
+        </div>
+        <button id="btn-connect" class="btn btn-primary">Connect Wallet</button>
+        <button id="btn-disconnect" class="btn btn-ghost hidden">Disconnect</button>
+      </div>
+    </header>
+
+    <!-- Global Stats -->
+    <div id="global-stats" class="global-stats">
+      <div id="global-stats-loading" class="global-stats-loading">
+        <span class="spinner"></span>
+        <span>Loading global stats…</span>
+      </div>
+      <div id="global-stats-content" class="global-stats-content hidden">
+        <div id="stat-wallets-item" class="stat-item stat-has-tooltip" tabindex="0">
+          <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+          </svg>
+          <span id="stat-wallets" class="stat-value">–</span>
+          <span class="stat-label">active wallets</span>
+        </div>
+        <span class="stat-sep" aria-hidden="true"></span>
+        <div id="stat-ovens-item" class="stat-item stat-has-tooltip" tabindex="0">
+          <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+            <path d="M16 3v4" />
+            <path d="M8 3v4" />
+          </svg>
+          <span id="stat-ovens" class="stat-value">–</span>
+          <span class="stat-label">active ovens</span>
+        </div>
+        <span class="stat-sep" aria-hidden="true"></span>
+        <div class="stat-item" title="Total burnable ctez across all active ovens">
+          <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path
+              d="M12 22c-4.97 0-9-2.69-9-6v-.5c0-2.49 2.24-4.89 5.23-5.42A8.07 8.07 0 0 1 8 8c0-2.52 1.16-4.78 3-6.31A9.05 9.05 0 0 1 14 8c0 .61-.07 1.21-.2 1.78A7.46 7.46 0 0 1 18 13.5V16c0 3.31-4.03 6-9 6Z" />
+          </svg>
+          <span id="stat-ctez" class="stat-value">–</span>
+          <span class="stat-label">ctez burnable</span>
+        </div>
+        <span class="stat-sep" aria-hidden="true"></span>
+        <div class="stat-item" title="Total withdrawable tez across all active ovens">
+          <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="12" y1="1" x2="12" y2="23" />
+            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+          </svg>
+          <span id="stat-tez" class="stat-value">–</span>
+          <span class="stat-label">tez withdrawable</span>
+        </div>
       </div>
     </div>
 
-    <div id="app">
-      <!-- Header -->
-      <header id="header">
-        <div class="header-left">
-          <h1>ctez Oven Tool</h1>
-          <span class="header-subtitle">close your oven</span>
+    <!-- Main content -->
+    <main id="main">
+      <!-- Disconnected state -->
+      <section id="section-disconnected" class="section-hero">
+        <div class="hero-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4" />
+            <polyline points="10 17 15 12 10 7" />
+            <line x1="15" y1="12" x2="3" y2="12" />
+          </svg>
         </div>
-        <div class="header-right">
-          <button id="btn-guide" class="btn-icon" title="Manual guide" aria-label="Manual guide" style="margin-right: 6px;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-          </button>
-          <div id="wallet-info" class="wallet-info hidden">
-            <span id="wallet-address" class="wallet-address"></span>
-            <button id="btn-copy-address" class="btn-icon" title="Copy address" aria-label="Copy address">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-            </button>
+        <p id="lookup-hero-text" class="hero-text">Connect your wallet to view and close your ctez ovens</p>
+        <div class="lookup-divider"><span>or look up any address</span></div>
+        <div class="lookup-row">
+          <div class="lookup-input-wrap">
+            <label for="lookup-input" class="sr-only">Tezos address to look up</label>
+            <input id="lookup-input" type="text" placeholder="tz1…" autocomplete="off" spellcheck="false"
+              class="lookup-input" role="combobox" aria-expanded="false" aria-controls="lookup-dropdown"
+              aria-autocomplete="list" />
+            <div id="lookup-dropdown" class="lookup-dropdown hidden" role="listbox"></div>
           </div>
-          <button id="btn-connect" class="btn btn-primary">Connect Wallet</button>
-          <button id="btn-disconnect" class="btn btn-ghost hidden">Disconnect</button>
+          <button id="btn-lookup" class="btn btn-ghost">Look up</button>
         </div>
-      </header>
+        <div id="lookup-loading-hint" class="lookup-hint hidden">
+          <span class="spinner"></span> Loading addresses…
+        </div>
+      </section>
 
-      <!-- Global Stats -->
-      <div id="global-stats" class="global-stats">
-        <div id="global-stats-loading" class="global-stats-loading">
-          <span class="spinner"></span>
-          <span>Loading global stats…</span>
-        </div>
-        <div id="global-stats-content" class="global-stats-content hidden">
-          <div id="stat-wallets-item" class="stat-item stat-has-tooltip" tabindex="0">
-            <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-            <span id="stat-wallets" class="stat-value">–</span>
-            <span class="stat-label">active wallets</span>
-          </div>
-          <span class="stat-sep" aria-hidden="true"></span>
-          <div id="stat-ovens-item" class="stat-item stat-has-tooltip" tabindex="0">
-            <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 3v4"/><path d="M8 3v4"/></svg>
-            <span id="stat-ovens" class="stat-value">–</span>
-            <span class="stat-label">active ovens</span>
-          </div>
-          <span class="stat-sep" aria-hidden="true"></span>
-          <div class="stat-item" title="Total burnable ctez across all active ovens">
-            <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22c-4.97 0-9-2.69-9-6v-.5c0-2.49 2.24-4.89 5.23-5.42A8.07 8.07 0 0 1 8 8c0-2.52 1.16-4.78 3-6.31A9.05 9.05 0 0 1 14 8c0 .61-.07 1.21-.2 1.78A7.46 7.46 0 0 1 18 13.5V16c0 3.31-4.03 6-9 6Z"/></svg>
-            <span id="stat-ctez" class="stat-value">–</span>
-            <span class="stat-label">ctez burnable</span>
-          </div>
-          <span class="stat-sep" aria-hidden="true"></span>
-          <div class="stat-item" title="Total withdrawable tez across all active ovens">
-            <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-            <span id="stat-tez" class="stat-value">–</span>
-            <span class="stat-label">tez withdrawable</span>
-          </div>
+      <!-- Read-only mode banner -->
+      <div id="readonly-banner" class="readonly-banner hidden">
+        <div class="readonly-banner-inner">
+          <span><span id="lookup-mode-label"><svg class="ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg> <span>Viewing ovens for</span></span> <strong id="readonly-address"></strong></span>
+          <button id="btn-clear-lookup" class="btn-icon" title="Clear lookup" aria-label="Clear lookup">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
         </div>
       </div>
 
-      <!-- Main content -->
-      <main id="main">
-        <!-- Disconnected state -->
-        <section id="section-disconnected" class="section-hero">
-          <div class="hero-icon">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+      <!-- Connected state -->
+      <div id="section-connected" class="hidden">
+
+        <!-- Step A: Oven Data -->
+        <section id="step-a" class="step-section">
+          <div class="step-header">
+            <span class="step-badge">A</span>
+            <h2>Your Ovens</h2>
           </div>
-          <p id="lookup-hero-text" class="hero-text">Connect your wallet to view and close your ctez ovens</p>
-          <div class="lookup-divider"><span>or look up any address</span></div>
-          <div class="lookup-row">
-            <div class="lookup-input-wrap">
-              <label for="lookup-input" class="sr-only">Tezos address to look up</label>
-              <input id="lookup-input" type="text" placeholder="tz1…" autocomplete="off" spellcheck="false" class="lookup-input" role="combobox" aria-expanded="false" aria-controls="lookup-dropdown" aria-autocomplete="list" />
-              <div id="lookup-dropdown" class="lookup-dropdown hidden" role="listbox"></div>
-            </div>
-            <button id="btn-lookup" class="btn btn-ghost">Look up</button>
+          <div id="oven-loading" class="status-strip status-pending">
+            <span class="spinner"></span> Loading oven data…
           </div>
-          <div id="lookup-loading-hint" class="lookup-hint hidden">
-            <span class="spinner"></span> Loading addresses…
+          <div id="oven-empty" class="status-strip status-info hidden">
+            No ctez ovens found for this address.
           </div>
+          <div id="oven-list"></div>
         </section>
 
-        <!-- Read-only mode banner -->
-        <div id="readonly-banner" class="readonly-banner hidden">
-          <div class="readonly-banner-inner">
-            <span><span id="lookup-mode-label"><svg class="ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg> <span>Viewing ovens for</span></span> <strong id="readonly-address"></strong></span>
-            <button id="btn-clear-lookup" class="btn-icon" title="Clear lookup" aria-label="Clear lookup">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            </button>
-          </div>
-        </div>
-
-        <!-- Connected state -->
-        <div id="section-connected" class="hidden">
-
-          <!-- Step A: Oven Data -->
-          <section id="step-a" class="step-section">
+        <div class="actions-panel">
+          <!-- Step B: Close oven -->
+          <section id="step-b" class="step-section hidden">
             <div class="step-header">
-              <span class="step-badge">A</span>
-              <h2>Your Ovens</h2>
+              <span class="step-badge">B</span>
+              <h2>Close oven</h2>
             </div>
-            <div id="oven-loading" class="status-strip status-pending">
-              <span class="spinner"></span> Loading oven data…
+            <div class="step-body">
+              <div class="field-row">
+                <span class="field-label">Oven ID</span>
+                <span id="close-oven-id" class="field-value mono"></span>
+              </div>
+              <div class="field-row">
+                <span class="field-label">ctez to burn</span>
+                <span id="close-burn-amount" class="field-value mono"></span>
+              </div>
+              <div class="field-row field-row-detail">
+                <span class="field-label">Raw quantity (mutez)</span>
+                <span id="close-burn-raw" class="field-value mono dim"></span>
+              </div>
+              <div class="field-row">
+                <span class="field-label">tez to withdraw</span>
+                <span id="close-withdraw-amount" class="field-value mono"></span>
+              </div>
+              <div class="field-row field-row-detail">
+                <span class="field-label">Raw amount (mutez)</span>
+                <span id="close-withdraw-raw" class="field-value mono dim"></span>
+              </div>
+              <div class="field-row">
+                <span class="field-label">Destination</span>
+                <span id="close-withdraw-to" class="field-value mono"></span>
+              </div>
+              <button id="btn-close-oven" class="btn btn-primary full-width">Close Oven in One Batch</button>
+              <div id="close-status" class="status-strip hidden" role="status" aria-live="polite" aria-atomic="true">
+              </div>
             </div>
-            <div id="oven-empty" class="status-strip status-info hidden">
-              No ctez ovens found for this address.
-            </div>
-            <div id="oven-list"></div>
+          </section>
+        </div>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <span>Powered by <a href="https://tzkt.io/" target="_blank" rel="noopener">TzKT API</a> by <a
+          href="https://bakingbad.dev/" target="_blank" rel="noopener">Baking Bad</a></span>
+      <span class="footer-sep">·</span>
+      <span><a href="https://taquito.io/" target="_blank" rel="noopener">Taquito</a> by <a href="https://ecadlabs.com/"
+          target="_blank" rel="noopener">Ecad Labs</a></span>
+      <span class="footer-sep">·</span>
+      <span>Built by <a href="https://x.com/webidente" target="_blank" rel="noopener">@webidente</a></span>
+      <span class="footer-sep">·</span>
+      <span>See also <a href="https://tezos.systems/ctez/" target="_blank" rel="noopener">ctez Recovery</a> on <a
+          href="https://tezos.systems/" target="_blank" rel="noopener">tezos.systems</a></span>
+    </footer>
+
+    <!-- Modal Guide -->
+    <div id="modal-guide" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modal-guide-title"
+      tabindex="-1">
+      <div class="modal-overlay"></div>
+      <div class="modal-container">
+        <div class="modal-header">
+          <h2 id="modal-guide-title">Manual Guide</h2>
+          <button id="btn-close-modal" class="btn-icon" aria-label="Close modal">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <section class="guide-step">
+            <h3>A) Check your oven balance</h3>
+            <p>Go to the storage explorer on <a
+                href="https://better-call.dev/mainnet/KT1GWnsoFZVHGh7roXEER3qeCcgJgrXT3de2/storage" target="_blank"
+                rel="noopener">better-call.dev ↗</a> and locate your oven in the <strong>ovens</strong> bigmap by
+              searching for your Tezos address. Make note of the <strong>oven ID</strong>,
+              <strong>ctez_outstanding</strong>, and <strong>tez_balance</strong>.</p>
           </section>
 
-          <div class="actions-panel">
-            <!-- Step B: Close oven -->
-            <section id="step-b" class="step-section hidden">
-              <div class="step-header">
-                <span class="step-badge">B</span>
-                <h2>Close oven</h2>
-              </div>
-              <div class="step-body">
-                <div class="field-row">
-                  <span class="field-label">Oven ID</span>
-                  <span id="close-oven-id" class="field-value mono"></span>
-                </div>
-                <div class="field-row">
-                  <span class="field-label">ctez to burn</span>
-                  <span id="close-burn-amount" class="field-value mono"></span>
-                </div>
-                <div class="field-row field-row-detail">
-                  <span class="field-label">Raw quantity (mutez)</span>
-                  <span id="close-burn-raw" class="field-value mono dim"></span>
-                </div>
-                <div class="field-row">
-                  <span class="field-label">tez to withdraw</span>
-                  <span id="close-withdraw-amount" class="field-value mono"></span>
-                </div>
-                <div class="field-row field-row-detail">
-                  <span class="field-label">Raw amount (mutez)</span>
-                  <span id="close-withdraw-raw" class="field-value mono dim"></span>
-                </div>
-                <div class="field-row">
-                  <span class="field-label">Destination</span>
-                  <span id="close-withdraw-to" class="field-value mono"></span>
-                </div>
-                <button id="btn-close-oven" class="btn btn-primary full-width">Close Oven in One Batch</button>
-                <div id="close-status" class="status-strip hidden" role="status" aria-live="polite" aria-atomic="true"></div>
-              </div>
-            </section>
-          </div>
-        </div>
-      </main>
+          <section class="guide-step">
+            <h3>B) Burn all ctez</h3>
+            <ol>
+              <li>Go to the <code>mint_or_burn</code> interaction page on <a
+                  href="https://better-call.dev/mainnet/KT1GWnsoFZVHGh7roXEER3qeCcgJgrXT3de2/interact/mint_or_burn"
+                  target="_blank" rel="noopener">better-call.dev ↗</a>.</li>
+              <li>Fill in:
+                <ul>
+                  <li><code>id</code>: Your oven ID</li>
+                  <li><code>quantity</code>: Negative value equal to your full <strong>ctez_outstanding</strong> (e.g.
+                    <code>-100000000</code>)</li>
+                </ul>
+              </li>
+              <li>Connect wallet and submit.</li>
+            </ol>
+          </section>
 
-      <!-- Footer -->
-      <footer id="footer">
-        <span>Powered by <a href="https://tzkt.io/" target="_blank" rel="noopener">TzKT API</a> by <a href="https://bakingbad.dev/" target="_blank" rel="noopener">Baking Bad</a></span>
-        <span class="footer-sep">·</span>
-        <span><a href="https://taquito.io/" target="_blank" rel="noopener">Taquito</a> by <a href="https://ecadlabs.com/" target="_blank" rel="noopener">Ecad Labs</a></span>
-        <span class="footer-sep">·</span>
-        <span>Built by <a href="https://x.com/webidente" target="_blank" rel="noopener">@webidente</a></span>
-        <span class="footer-sep">·</span>
-        <span>See also <a href="https://tezos.systems/ctez/" target="_blank" rel="noopener">ctez Recovery</a> by <a href="https://tezos.systems/" target="_blank" rel="noopener">tezos.systems</a></span>
-      </footer>
-
-      <!-- Modal Guide -->
-      <div id="modal-guide" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modal-guide-title" tabindex="-1">
-        <div class="modal-overlay"></div>
-        <div class="modal-container">
-          <div class="modal-header">
-            <h2 id="modal-guide-title">Manual Guide</h2>
-            <button id="btn-close-modal" class="btn-icon" aria-label="Close modal">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            </button>
-          </div>
-          <div class="modal-body">
-            <section class="guide-step">
-              <h3>A) Check your oven balance</h3>
-              <p>Go to the storage explorer on <a href="https://better-call.dev/mainnet/KT1GWnsoFZVHGh7roXEER3qeCcgJgrXT3de2/storage" target="_blank" rel="noopener">better-call.dev ↗</a> and locate your oven in the <strong>ovens</strong> bigmap by searching for your Tezos address. Make note of the <strong>oven ID</strong>, <strong>ctez_outstanding</strong>, and <strong>tez_balance</strong>.</p>
-            </section>
-            
-            <section class="guide-step">
-              <h3>B) Burn all ctez</h3>
-              <ol>
-                <li>Go to the <code>mint_or_burn</code> interaction page on <a href="https://better-call.dev/mainnet/KT1GWnsoFZVHGh7roXEER3qeCcgJgrXT3de2/interact/mint_or_burn" target="_blank" rel="noopener">better-call.dev ↗</a>.</li>
-                <li>Fill in:
-                  <ul>
-                    <li><code>id</code>: Your oven ID</li>
-                    <li><code>quantity</code>: Negative value equal to your full <strong>ctez_outstanding</strong> (e.g. <code>-100000000</code>)</li>
-                  </ul>
-                </li>
-                <li>Connect wallet and submit.</li>
-              </ol>
-            </section>
-
-            <section class="guide-step">
-              <h3>C) Withdraw all tez</h3>
-              <ol>
-                <li>Stay on the same better-call.dev interact page.</li>
-                <li>Select entrypoint <code>withdraw</code>.</li>
-                <li>Fill in:
-                  <ul>
-                    <li><code>id</code>: Your oven ID</li>
-                    <li><code>amount</code>: Your full <strong>tez_balance</strong> in mutez (try slightly smaller if it fails)</li>
-                    <li><code>to</code>: Your wallet address</li>
-                  </ul>
-                </li>
-                <li>Submit.</li>
-              </ol>
-            </section>
-          </div>
+          <section class="guide-step">
+            <h3>C) Withdraw all tez</h3>
+            <ol>
+              <li>Stay on the same better-call.dev interact page.</li>
+              <li>Select entrypoint <code>withdraw</code>.</li>
+              <li>Fill in:
+                <ul>
+                  <li><code>id</code>: Your oven ID</li>
+                  <li><code>amount</code>: Your full <strong>tez_balance</strong> in mutez (try slightly smaller if it
+                    fails)</li>
+                  <li><code>to</code>: Your wallet address</li>
+                </ul>
+              </li>
+              <li>Submit.</li>
+            </ol>
+          </section>
         </div>
       </div>
     </div>
+  </div>
 
-    <script type="module" src="./src/main.js"></script>
-  </body>
+  <script type="module" src="./src/main.js"></script>
+</body>
+
 </html>
