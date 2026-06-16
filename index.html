@@ -42,6 +42,39 @@
         </div>
       </header>
 
+      <!-- Global Stats -->
+      <div id="global-stats" class="global-stats">
+        <div id="global-stats-loading" class="global-stats-loading">
+          <span class="spinner"></span>
+          <span>Loading global stats…</span>
+        </div>
+        <div id="global-stats-content" class="global-stats-content hidden">
+          <div id="stat-wallets-item" class="stat-item stat-has-tooltip" tabindex="0">
+            <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            <span id="stat-wallets" class="stat-value">–</span>
+            <span class="stat-label">active wallets</span>
+          </div>
+          <span class="stat-sep" aria-hidden="true"></span>
+          <div id="stat-ovens-item" class="stat-item stat-has-tooltip" tabindex="0">
+            <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 3v4"/><path d="M8 3v4"/></svg>
+            <span id="stat-ovens" class="stat-value">–</span>
+            <span class="stat-label">active ovens</span>
+          </div>
+          <span class="stat-sep" aria-hidden="true"></span>
+          <div class="stat-item" title="Total burnable ctez across all active ovens">
+            <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22c-4.97 0-9-2.69-9-6v-.5c0-2.49 2.24-4.89 5.23-5.42A8.07 8.07 0 0 1 8 8c0-2.52 1.16-4.78 3-6.31A9.05 9.05 0 0 1 14 8c0 .61-.07 1.21-.2 1.78A7.46 7.46 0 0 1 18 13.5V16c0 3.31-4.03 6-9 6Z"/></svg>
+            <span id="stat-ctez" class="stat-value">–</span>
+            <span class="stat-label">ctez burnable</span>
+          </div>
+          <span class="stat-sep" aria-hidden="true"></span>
+          <div class="stat-item" title="Total withdrawable tez across all active ovens">
+            <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            <span id="stat-tez" class="stat-value">–</span>
+            <span class="stat-label">tez withdrawable</span>
+          </div>
+        </div>
+      </div>
+
       <!-- Main content -->
       <main id="main">
         <!-- Disconnected state -->

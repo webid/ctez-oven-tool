@@ -48,6 +48,12 @@ const lookupDropdown = $("lookup-dropdown");
 const btnGuide = $("btn-guide");
 const modalGuide = $("modal-guide");
 const btnCloseModal = $("btn-close-modal");
+const globalStatsLoading = $("global-stats-loading");
+const globalStatsContent = $("global-stats-content");
+const statWallets = $("stat-wallets");
+const statOvens = $("stat-ovens");
+const statCtez = $("stat-ctez");
+const statTez = $("stat-tez");
 
 // Dropdown state
 let allOwners = [];   // full list from TzKT
@@ -75,13 +81,30 @@ initWallet(handleAccountChange);
   }
 })();
 
-// Pre-fetch all oven owner addresses for dropdown
+// Pre-fetch all oven owner addresses for dropdown + global stats
 (async () => {
   lookupLoadingHint.classList.remove("hidden");
   try {
-    allOwners = await fetchAllOvenOwners();
+    const { owners, stats } = await fetchAllOvenOwners();
+    allOwners = owners;
+
+    // Populate global stats (actionable counts)
+    statWallets.textContent = stats.totalWallets.toLocaleString();
+    statOvens.textContent = stats.activeOvens.toLocaleString();
+    statCtez.textContent = formatStatAmount(stats.totalCtez);
+    statTez.textContent = formatStatAmount(stats.totalTez);
+
+    // Tooltips with unfiltered totals
+    $("stat-wallets-item").dataset.tooltip =
+      `${stats.totalWallets.toLocaleString()} of ${stats.totalOwners.toLocaleString()} total wallets have balances`;
+    $("stat-ovens-item").dataset.tooltip =
+      `${stats.activeOvens.toLocaleString()} of ${stats.totalOvens.toLocaleString()} total ovens have balances`;
+
+    globalStatsLoading.classList.add("hidden");
+    globalStatsContent.classList.remove("hidden");
   } catch (err) {
-    console.warn("Failed to load oven owners for autocomplete:", err);
+    console.warn("Failed to load oven owners:", err);
+    globalStatsLoading.innerHTML = `<span style="color: var(--text-dim); font-size: 0.72rem;">Stats unavailable</span>`;
   }
   lookupLoadingHint.classList.add("hidden");
 })();
@@ -585,3 +608,24 @@ function escapeHtml(str) {
   div.textContent = str;
   return div.innerHTML;
 }
+
+/**
+ * Format a BigInt mutez amount for display, stripping trailing zeros.
+ * 23100000n → "23.1"   |   1000000n → "1"   |   0n → "0"
+ */
+function formatStatAmount(mutez) {
+  const amount = BigInt(mutez ?? 0);
+  if (amount === 0n) return "0";
+
+  const whole = amount / 1_000_000n;
+  const frac = amount % 1_000_000n;
+
+  if (frac === 0n) {
+    return whole.toLocaleString();
+  }
+
+  const fracStr = String(frac).padStart(6, "0").replace(/0+$/, "");
+  const wholeStr = whole.toLocaleString();
+  return `${wholeStr}.${fracStr}`;
+}
+

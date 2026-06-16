@@ -152,6 +152,115 @@ a:hover {
   border: 0;
 }
 
+/* --- Global Stats Bar --- */
+.global-stats {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.global-stats-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  padding: 2px 0;
+}
+
+.global-stats-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  animation: fadeIn 0.3s ease forwards;
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.stat-icon {
+  width: 13px;
+  height: 13px;
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+
+.stat-value {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--accent);
+}
+
+.stat-label {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.stat-sep {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--border-focus);
+  flex-shrink: 0;
+}
+
+@media (max-width: 520px) {
+  .global-stats-content {
+    gap: 8px 12px;
+  }
+
+  .stat-sep {
+    display: none;
+  }
+}
+
+/* Stat tooltips (hover / focus for mobile tap) */
+.stat-has-tooltip {
+  position: relative;
+  cursor: default;
+  border-bottom: 1px dashed var(--border-focus);
+  padding-bottom: 2px;
+}
+
+.stat-has-tooltip:focus {
+  outline: none;
+}
+
+.stat-has-tooltip::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 6px);
+  transform: translateX(-50%);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 5px 9px;
+  font-family: var(--font-body);
+  font-size: 0.68rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.15s, visibility 0.15s;
+  z-index: 50;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.stat-has-tooltip:hover::after,
+.stat-has-tooltip:focus::after {
+  opacity: 1;
+  visibility: visible;
+}
+
 /* --- Buttons --- */
 .btn {
   font-family: var(--font-body);
