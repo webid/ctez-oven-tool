@@ -180,6 +180,70 @@
               <h2>Close oven</h2>
             </div>
             <div class="step-body">
+              <div class="strategy-section-title">Select Strategy</div>
+              <div id="strategy-options" class="strategy-options">
+                
+                <!-- Strategy 1: Full Close -->
+                <button type="button" class="strategy-card-option" id="strat-full" aria-pressed="false">
+                  <div class="strategy-card-header">
+                    <span class="strategy-name">1. Full Close</span>
+                    <span id="strat-full-badge" class="strategy-badge"></span>
+                  </div>
+                  <div class="strategy-desc">Repay all outstanding ctez to withdraw all tez collateral. Closes the oven.</div>
+                  <div class="strategy-amounts">
+                    <div class="strat-amount-item">
+                      <span class="strat-amount-label">Burn:</span>
+                      <span id="strat-full-burn-val" class="strat-amount-val mono">--</span>
+                    </div>
+                    <div class="strat-amount-item">
+                      <span class="strat-amount-label">Withdraw:</span>
+                      <span id="strat-full-withdraw-val" class="strat-amount-val mono">--</span>
+                    </div>
+                  </div>
+                </button>
+
+                <!-- Strategy 2: Partial Close -->
+                <button type="button" class="strategy-card-option" id="strat-partial" aria-pressed="false">
+                  <div class="strategy-card-header">
+                    <span class="strategy-name">2. Partial Close</span>
+                    <span id="strat-partial-badge" class="strategy-badge"></span>
+                  </div>
+                  <div class="strategy-desc">Burn available wallet ctez to unlock and withdraw the maximum safe amount of tez.</div>
+                  <div class="strategy-amounts">
+                    <div class="strat-amount-item">
+                      <span class="strat-amount-label">Burn:</span>
+                      <span id="strat-partial-burn-val" class="strat-amount-val mono">--</span>
+                    </div>
+                    <div class="strat-amount-item">
+                      <span class="strat-amount-label">Withdraw:</span>
+                      <span id="strat-partial-withdraw-val" class="strat-amount-val mono">--</span>
+                    </div>
+                  </div>
+                </button>
+
+                <!-- Strategy 3: Excess Only -->
+                <button type="button" class="strategy-card-option" id="strat-excess" aria-pressed="false">
+                  <div class="strategy-card-header">
+                    <span class="strategy-name">3. Withdraw Excess</span>
+                    <span id="strat-excess-badge" class="strategy-badge"></span>
+                  </div>
+                  <div class="strategy-desc">Withdraw only the tez collateral exceeding the minimum requirement. No ctez burn.</div>
+                  <div class="strategy-amounts">
+                    <div class="strat-amount-item">
+                      <span class="strat-amount-label">Burn:</span>
+                      <span class="strat-amount-val mono">0 ctez</span>
+                    </div>
+                    <div class="strat-amount-item">
+                      <span class="strat-amount-label">Withdraw:</span>
+                      <span id="strat-excess-withdraw-val" class="strat-amount-val mono">--</span>
+                    </div>
+                  </div>
+                </button>
+
+              </div>
+
+              <div class="strategy-details-divider"></div>
+
               <div class="field-row">
                 <span class="field-label">Oven ID</span>
                 <span id="close-oven-id" class="field-value mono"></span>
@@ -204,7 +268,7 @@
                 <span class="field-label">Destination</span>
                 <span id="close-withdraw-to" class="field-value mono"></span>
               </div>
-              <button id="btn-close-oven" class="btn btn-primary full-width">Close Oven in One Batch</button>
+              <button id="btn-close-oven" class="btn btn-primary full-width">Close Oven</button>
               <div id="close-status" class="status-strip hidden" role="status" aria-live="polite" aria-atomic="true">
               </div>
             </div>

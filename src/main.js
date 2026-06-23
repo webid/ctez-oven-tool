@@ -7,8 +7,8 @@
 import "./style.css";
 
 import { initWallet, checkExistingConnection, connectWallet, disconnectWallet } from "./wallet.js";
-import { fetchOvensByOwner, fetchAllOvenOwners } from "./tzkt.js";
-import { closeOven, formatTez, formatCtez } from "./contract.js";
+import { fetchOvensByOwner, fetchAllOvenOwners, fetchCtezStorage, fetchUserCtezBalance } from "./tzkt.js";
+import { closeOven, formatTez, formatCtez, calculateOvenStrategies } from "./contract.js";
 import { createLookupOptions } from "./lookupDisplay.js";
 import { isTestLookupWallet, lookupIsReadOnly } from "./testWalletMode.js";
 import { iconSvg } from "./uiIcons.js";
@@ -19,6 +19,10 @@ let connectedWalletAddress = null;
 let ovens = [];
 let selectedOven = null;
 let isReadOnly = false; // true for lookup previews without the special test wallet
+let walletCtezBalance = "0";
+let ctezTarget = "1";
+let selectedStrategy = null;
+let currentStrategies = null;
 
 // --- DOM refs ---
 const $ = (id) => document.getElementById(id);
@@ -150,17 +154,30 @@ btnCopyAddress.addEventListener("click", () => {
 });
 
 btnCloseOven.addEventListener("click", async () => {
-  if (!selectedOven || !currentAddress || !connectedWalletAddress || isReadOnly) return;
-  if (!isPositiveAmount(selectedOven.ctezOutstanding) && !isPositiveAmount(selectedOven.tezBalance)) {
+  if (!selectedOven || !currentAddress || !connectedWalletAddress || isReadOnly || !selectedStrategy) return;
+  const strat = currentStrategies[selectedStrategy];
+  if (!strat) return;
+
+  const hasBurn = isPositiveAmount(strat.burn);
+  const hasWithdraw = isPositiveAmount(strat.withdraw);
+  if (!hasBurn && !hasWithdraw) {
     showStatus(closeStatus, "info", "No ctez or tez to close for this oven.");
     return;
   }
 
   btnCloseOven.disabled = true;
   try {
-    await closeOven(selectedOven, currentAddress, (status) => {
-      showStatus(closeStatus, status.type, status.message, status.opHash);
-    });
+    await closeOven(
+      {
+        ovenId: selectedOven.ovenId,
+        burnAmount: strat.burn,
+        withdrawAmount: strat.withdraw,
+      },
+      currentAddress,
+      (status) => {
+        showStatus(closeStatus, status.type, status.message, status.opHash);
+      }
+    );
     await loadOvens(currentAddress);
   } catch (err) {
     showStatus(closeStatus, "error", `Batch failed: ${err?.message || String(err)}`);
@@ -236,6 +253,28 @@ lookupDropdown.addEventListener("mousedown", (e) => {
 
 btnClearLookup.addEventListener("click", () => {
   clearLookup();
+});
+
+// --- Strategy Selection Listeners ---
+$("strat-full").addEventListener("click", () => {
+  if (currentStrategies?.full.possible) {
+    selectedStrategy = "full";
+    updateStrategyUI();
+  }
+});
+
+$("strat-partial").addEventListener("click", () => {
+  if (currentStrategies?.partial.possible) {
+    selectedStrategy = "partial";
+    updateStrategyUI();
+  }
+});
+
+$("strat-excess").addEventListener("click", () => {
+  if (currentStrategies?.excess.possible) {
+    selectedStrategy = "excess";
+    updateStrategyUI();
+  }
 });
 
 // --- Modal Guide Event Listeners ---
@@ -448,9 +487,19 @@ async function loadOvens(address) {
   ovenList.innerHTML = "";
   stepB.classList.add("hidden");
   selectedOven = null;
+  walletCtezBalance = "0";
+  ctezTarget = "1";
 
   try {
-    ovens = await fetchOvensByOwner(address);
+    const [ovensResult, balanceResult, storageResult] = await Promise.all([
+      fetchOvensByOwner(address),
+      fetchUserCtezBalance(address).catch(() => "0"),
+      fetchCtezStorage().catch(() => ({ target: "1" })),
+    ]);
+
+    ovens = ovensResult;
+    walletCtezBalance = balanceResult;
+    ctezTarget = storageResult.target;
     ovenLoading.classList.add("hidden");
 
     if (ovens.length === 0) {
@@ -526,45 +575,138 @@ function selectOven(oven) {
     card.setAttribute("aria-pressed", "true");
   }
 
-  const hasCtez = isPositiveAmount(oven.ctezOutstanding);
-  const hasTez = isPositiveAmount(oven.tezBalance);
+  // Calculate strategies
+  currentStrategies = calculateOvenStrategies({
+    ctezOutstanding: oven.ctezOutstanding,
+    tezBalance: oven.tezBalance,
+    walletCtezBalance,
+    target: ctezTarget,
+  });
 
-  $("close-oven-id").textContent = oven.ovenId;
-  $("close-burn-amount").textContent = hasCtez ? `${formatCtez(oven.ctezOutstanding)} ctez` : "Skipped";
-  $("close-burn-raw").textContent = hasCtez ? `-${oven.ctezOutstanding}` : "0";
-  $("close-withdraw-amount").textContent = hasTez ? `${formatTez(oven.tezBalance)} ꜩ` : "Skipped";
-  $("close-withdraw-raw").textContent = oven.tezBalance;
+  // Pick default strategy
+  if (currentStrategies.full.possible) {
+    selectedStrategy = "full";
+  } else if (currentStrategies.partial.possible) {
+    selectedStrategy = "partial";
+  } else if (currentStrategies.excess.possible) {
+    selectedStrategy = "excess";
+  } else {
+    selectedStrategy = "full"; // default fall back
+  }
 
-  $("close-withdraw-to").textContent = truncateAddress(currentAddress);
-  $("close-withdraw-to").title = currentAddress;
   closeStatus.classList.add("hidden");
   stepB.classList.remove("hidden");
 
-  if (isReadOnly) {
-    btnCloseOven.classList.add("hidden");
-    showClosePreviewStatus(hasCtez, hasTez);
+  updateStrategyUI();
+}
+
+function updateStrategyUI() {
+  if (!selectedOven || !currentStrategies) return;
+
+  const { full, partial, excess } = currentStrategies;
+
+  // 1. Full Close Strategy
+  $("strat-full-burn-val").textContent = `${formatCtez(full.burn)} ctez`;
+  $("strat-full-withdraw-val").textContent = `${formatTez(full.withdraw)} ꜩ`;
+  const btnFull = $("strat-full");
+  const badgeFull = $("strat-full-badge");
+  btnFull.disabled = !full.possible;
+  if (full.possible) {
+    badgeFull.textContent = "Available";
+    badgeFull.className = "strategy-badge";
   } else {
-    btnCloseOven.classList.remove("hidden");
-    btnCloseOven.disabled = !hasCtez && !hasTez;
-    if (hasCtez && hasTez) {
-      showStatus(closeStatus, "info", "This will burn ctez first, then withdraw the full oven tez balance in one atomic batch.");
-    } else if (hasCtez) {
-      showStatus(closeStatus, "info", "This will burn the full ctez outstanding amount in one batch.");
-    } else if (hasTez) {
-      showStatus(closeStatus, "info", "No ctez burn is needed. This will withdraw the full oven tez balance.");
+    badgeFull.textContent = `Requires ${formatCtez(full.burn)} ctez`;
+    badgeFull.className = "strategy-badge badge-error";
+  }
+
+  // 2. Partial Close Strategy
+  $("strat-partial-burn-val").textContent = `${formatCtez(partial.burn)} ctez`;
+  $("strat-partial-withdraw-val").textContent = `${formatTez(partial.withdraw)} ꜩ`;
+  const btnPartial = $("strat-partial");
+  const badgePartial = $("strat-partial-badge");
+  btnPartial.disabled = !partial.possible;
+  if (partial.possible) {
+    badgePartial.textContent = "Available";
+    badgePartial.className = "strategy-badge";
+  } else {
+    badgePartial.textContent = "N/A";
+    badgePartial.className = "strategy-badge";
+  }
+
+  // 3. Excess Only Strategy
+  $("strat-excess-withdraw-val").textContent = `${formatTez(excess.withdraw)} ꜩ`;
+  const btnExcess = $("strat-excess");
+  const badgeExcess = $("strat-excess-badge");
+  btnExcess.disabled = !excess.possible;
+  if (excess.possible) {
+    badgeExcess.textContent = "Available";
+    badgeExcess.className = "strategy-badge";
+  } else {
+    badgeExcess.textContent = "No excess";
+    badgeExcess.className = "strategy-badge";
+  }
+
+  // Add/remove selected state class
+  btnFull.classList.toggle("selected", selectedStrategy === "full");
+  btnFull.setAttribute("aria-pressed", selectedStrategy === "full" ? "true" : "false");
+
+  btnPartial.classList.toggle("selected", selectedStrategy === "partial");
+  btnPartial.setAttribute("aria-pressed", selectedStrategy === "partial" ? "true" : "false");
+
+  btnExcess.classList.toggle("selected", selectedStrategy === "excess");
+  btnExcess.setAttribute("aria-pressed", selectedStrategy === "excess" ? "true" : "false");
+
+  // Show strategy specific details in the text fields
+  const strat = currentStrategies[selectedStrategy];
+  if (strat) {
+    const hasBurn = isPositiveAmount(strat.burn);
+    const hasWithdraw = isPositiveAmount(strat.withdraw);
+
+    $("close-oven-id").textContent = selectedOven.ovenId;
+    $("close-burn-amount").textContent = hasBurn ? `${formatCtez(strat.burn)} ctez` : "Skipped";
+    $("close-burn-raw").textContent = hasBurn ? `-${strat.burn}` : "0";
+    $("close-withdraw-amount").textContent = hasWithdraw ? `${formatTez(strat.withdraw)} ꜩ` : "Skipped";
+    $("close-withdraw-raw").textContent = strat.withdraw;
+    $("close-withdraw-to").textContent = truncateAddress(currentAddress);
+    $("close-withdraw-to").title = currentAddress;
+
+    if (isReadOnly) {
+      btnCloseOven.classList.add("hidden");
+      showClosePreviewStatus(hasBurn, hasWithdraw);
     } else {
-      showStatus(closeStatus, "success", "No ctez or tez to close for this oven.");
+      btnCloseOven.classList.remove("hidden");
+      btnCloseOven.disabled = !hasBurn && !hasWithdraw;
+
+      if (selectedStrategy === "full") {
+        btnCloseOven.textContent = "Close Oven in One Batch";
+        showStatus(closeStatus, "info", "This will burn ctez first, then withdraw the full oven tez balance in one atomic batch.");
+      } else if (selectedStrategy === "partial") {
+        btnCloseOven.textContent = "Repay & Withdraw";
+        showStatus(closeStatus, "info", `This will burn all your ${formatCtez(strat.burn)} ctez to unlock and withdraw ${formatTez(strat.withdraw)} ꜩ collateral, leaving ${formatCtez(strat.remaining)} ctez outstanding.`);
+      } else {
+        btnCloseOven.textContent = "Withdraw Excess Collateral";
+        showStatus(closeStatus, "info", "No ctez burn is needed. This will withdraw the excess oven tez balance.");
+      }
     }
+  } else {
+    $("close-oven-id").textContent = selectedOven.ovenId;
+    $("close-burn-amount").textContent = "N/A";
+    $("close-burn-raw").textContent = "0";
+    $("close-withdraw-amount").textContent = "N/A";
+    $("close-withdraw-raw").textContent = "0";
+    btnCloseOven.disabled = true;
+    btnCloseOven.textContent = "Strategy Unavailable";
+    showStatus(closeStatus, "error", "You do not have enough ctez to close this oven, and there is no excess collateral to withdraw.");
   }
 }
 
-function showClosePreviewStatus(hasCtez, hasTez) {
-  if (hasCtez && hasTez) {
-    showStatus(closeStatus, "info", "Read-only preview: the oven owner wallet can burn ctez first, then withdraw the full oven tez balance in one atomic batch.");
-  } else if (hasCtez) {
-    showStatus(closeStatus, "info", "Read-only preview: the oven owner wallet can burn the full ctez outstanding amount.");
-  } else if (hasTez) {
-    showStatus(closeStatus, "info", "Read-only preview: no burn needed; the oven owner wallet can withdraw the full oven tez balance.");
+function showClosePreviewStatus(hasBurn, hasWithdraw) {
+  if (hasBurn && hasWithdraw) {
+    showStatus(closeStatus, "info", "Read-only preview: the oven owner wallet can burn ctez first, then withdraw the corresponding oven tez balance in one atomic batch.");
+  } else if (hasBurn) {
+    showStatus(closeStatus, "info", "Read-only preview: the oven owner wallet can burn ctez outstanding.");
+  } else if (hasWithdraw) {
+    showStatus(closeStatus, "info", "Read-only preview: no burn needed; the oven owner wallet can withdraw the oven tez balance.");
   } else {
     showStatus(closeStatus, "success", "No ctez or tez to close for this oven.");
   }
