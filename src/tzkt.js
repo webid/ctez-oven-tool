@@ -5,6 +5,8 @@
 
 const TZKT_BASE = "https://api.tzkt.io/v1";
 const OVENS_BIGMAP_ID = 20919;
+const CTEZ_CONTRACT = "KT1GWnsoFZVHGh7roXEER3qeCcgJgrXT3de2";
+const CTEZ_TOKEN_CONTRACT = "KT1SjXiUX63QvdNMcM2m492f7kuf8JxXRLp4";
 
 /**
  * Fetch all ovens owned by a given address.
@@ -106,4 +108,33 @@ export async function fetchAllOvenOwners() {
 function compareBigIntDesc(a, b) {
   if (a === b) return 0;
   return a > b ? -1 : 1;
+}
+
+/**
+ * Fetch current ctez contract storage to get the target price parameter.
+ * @returns {Promise<{target: string, drift: string, last_drift_update: string}>}
+ */
+export async function fetchCtezStorage() {
+  const url = `${TZKT_BASE}/contracts/${CTEZ_CONTRACT}/storage`;
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch ctez storage: ${res.status} ${res.statusText}`);
+  }
+  return res.json();
+}
+
+/**
+ * Fetch ctez token balance of a given user address.
+ * @param {string} userAddress - tz1/tz2/tz3 address
+ * @returns {Promise<string>} Balance in micro-ctez as decimal string
+ */
+export async function fetchUserCtezBalance(userAddress) {
+  const url = `${TZKT_BASE}/tokens/balances?account=${userAddress}&token.contract=${CTEZ_TOKEN_CONTRACT}`;
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch user ctez balance: ${res.status} ${res.statusText}`);
+  }
+  const data = await res.json();
+  if (data.length === 0) return "0";
+  return data[0].balance ?? "0";
 }

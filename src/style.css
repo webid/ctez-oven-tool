@@ -1145,3 +1145,141 @@ a:hover {
   font-weight: 500;
   font-family: var(--font-body);
 }
+
+/* ================================================
+   Strategy Selection Cards
+   ================================================ */
+.strategy-section-title {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+  margin-top: 4px;
+}
+
+.strategy-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.strategy-card-option {
+  width: 100%;
+  appearance: none;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  outline: none;
+  font-family: var(--font-body);
+}
+
+.strategy-card-option:hover:not(:disabled) {
+  border-color: var(--border-focus);
+  background: var(--bg-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.strategy-card-option.selected {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+  box-shadow: 0 0 16px var(--accent-glow);
+}
+
+.strategy-card-option:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background: rgba(17, 17, 24, 0.4);
+}
+
+.strategy-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  gap: 8px;
+}
+
+.strategy-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.strategy-card-option.selected .strategy-name {
+  color: var(--accent);
+}
+
+.strategy-badge {
+  font-size: 0.68rem;
+  font-weight: 500;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.strategy-card-option.selected .strategy-badge {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.strategy-badge.badge-error {
+  background: var(--danger-dim);
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.strategy-desc {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.strategy-amounts {
+  display: flex;
+  gap: 16px;
+  margin-top: 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 8px;
+}
+
+.strat-amount-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.strat-amount-label {
+  font-size: 0.68rem;
+  color: var(--text-dim);
+}
+
+.strat-amount-val {
+  font-size: 0.74rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.strategy-card-option.selected .strat-amount-val {
+  color: var(--accent);
+}
+
+.strategy-details-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 12px 0 8px;
+}

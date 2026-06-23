@@ -10,6 +10,7 @@ import {
   createWithdrawParams,
   formatCtez,
   formatTez,
+  calculateOvenStrategies,
 } from "./contractParams.js";
 
 const CTEZ_CONTRACT = "KT1GWnsoFZVHGh7roXEER3qeCcgJgrXT3de2";
@@ -22,24 +23,24 @@ const CTEZ_CONTRACT = "KT1GWnsoFZVHGh7roXEER3qeCcgJgrXT3de2";
  * @param {string} userAddress - Destination address (user's wallet)
  * @param {(status: {type: string, message: string, opHash?: string}) => void} onStatus
  */
-export async function closeOven(oven, userAddress, onStatus) {
+export async function closeOven({ ovenId, burnAmount, withdrawAmount }, userAddress, onStatus) {
   const tezos = getTezos();
 
   onStatus({ type: "pending", message: "Getting contract handle…" });
 
   const contract = await tezos.wallet.at(CTEZ_CONTRACT);
   const plan = createCloseOvenBatchPlan({
-    ovenId: oven.ovenId,
-    ctezOutstanding: oven.ctezOutstanding,
-    tezBalance: oven.tezBalance,
+    ovenId,
+    burnAmount,
+    withdrawAmount,
     destination: userAddress,
   });
 
   const burnStep = plan.find((step) => step.entrypoint === "mint_or_burn");
   const withdrawStep = plan.find((step) => step.entrypoint === "withdraw");
   const summary = [
-    burnStep ? `burn ${formatCtez(oven.ctezOutstanding)} ctez` : null,
-    withdrawStep ? `withdraw ${formatTez(oven.tezBalance)} ꜩ` : null,
+    burnStep ? `burn ${formatCtez(burnAmount)} ctez` : null,
+    withdrawStep ? `withdraw ${formatTez(withdrawAmount)} ꜩ` : null,
   ].filter(Boolean).join(", then ");
 
   onStatus({
@@ -70,4 +71,5 @@ export {
   createWithdrawParams,
   formatCtez,
   formatTez,
+  calculateOvenStrategies,
 };

@@ -7,6 +7,7 @@ import {
   createWithdrawParams,
   formatCtez,
   formatTez,
+  calculateOvenStrategies,
 } from "./contractParams.js";
 
 test("createBurnParams keeps large nat/int values as safe decimal strings", () => {
@@ -25,7 +26,7 @@ test("createBurnParams rejects malformed decimal inputs", () => {
   );
   assert.throws(
     () => createBurnParams("12", "-1000"),
-    /ctez outstanding must be a non-negative decimal string/,
+    /burn amount must be a non-negative decimal string/,
   );
 });
 
@@ -58,8 +59,8 @@ test("formatters preserve precision for large decimal mutez values", () => {
 test("createCloseOvenBatchPlan orders burn before max-balance withdraw", () => {
   const plan = createCloseOvenBatchPlan({
     ovenId: "42",
-    ctezOutstanding: "1234567",
-    tezBalance: "7654321",
+    burnAmount: "1234567",
+    withdrawAmount: "7654321",
     destination: "tz1NRbpmTuPEFCCYCqCr7i3hkMRDRhBFgmxz",
   });
 
@@ -82,8 +83,8 @@ test("createCloseOvenBatchPlan orders burn before max-balance withdraw", () => {
 test("createCloseOvenBatchPlan skips burn when there is no ctez outstanding", () => {
   const plan = createCloseOvenBatchPlan({
     ovenId: "42",
-    ctezOutstanding: "0",
-    tezBalance: "7654321",
+    burnAmount: "0",
+    withdrawAmount: "7654321",
     destination: "tz1NRbpmTuPEFCCYCqCr7i3hkMRDRhBFgmxz",
   });
 
@@ -103,10 +104,59 @@ test("createCloseOvenBatchPlan rejects empty no-op ovens", () => {
   assert.throws(
     () => createCloseOvenBatchPlan({
       ovenId: "42",
-      ctezOutstanding: "0",
-      tezBalance: "0",
+      burnAmount: "0",
+      withdrawAmount: "0",
       destination: "tz1NRbpmTuPEFCCYCqCr7i3hkMRDRhBFgmxz",
     }),
     /no ctez or tez to close/,
   );
+});
+
+test("calculateOvenStrategies behaves correctly when wallet ctez is sufficient", () => {
+  const strategies = calculateOvenStrategies({
+    ctezOutstanding: "10000000", // 10 ctez
+    tezBalance: "15000000",      // 15 tez
+    walletCtezBalance: "12000000", // 12 ctez
+    target: "194064612906983",   // peg ~0.689
+  });
+
+  assert.equal(strategies.full.possible, true);
+  assert.equal(strategies.full.burn, "10000000");
+  assert.equal(strategies.full.withdraw, "15000000");
+
+  assert.equal(strategies.partial.possible, false);
+});
+
+test("calculateOvenStrategies behaves correctly when wallet ctez is insufficient but positive", () => {
+  const strategies = calculateOvenStrategies({
+    ctezOutstanding: "10000000",
+    tezBalance: "15000000",
+    walletCtezBalance: "4000000",
+    target: "194064612906983",
+  });
+
+  assert.equal(strategies.full.possible, false);
+
+  assert.equal(strategies.excess.possible, true);
+  assert.equal(strategies.excess.burn, "0");
+  assert.equal(strategies.excess.withdraw, "7645802");
+
+  assert.equal(strategies.partial.possible, true);
+  assert.equal(strategies.partial.burn, "4000000");
+  assert.equal(strategies.partial.withdraw, "10587481");
+  assert.equal(strategies.partial.remaining, "6000000");
+});
+
+test("calculateOvenStrategies behaves correctly when wallet ctez is zero", () => {
+  const strategies = calculateOvenStrategies({
+    ctezOutstanding: "10000000",
+    tezBalance: "15000000",
+    walletCtezBalance: "0",
+    target: "194064612906983",
+  });
+
+  assert.equal(strategies.full.possible, false);
+  assert.equal(strategies.partial.possible, false);
+  assert.equal(strategies.excess.possible, true);
+  assert.equal(strategies.excess.withdraw, "7645802");
 });
